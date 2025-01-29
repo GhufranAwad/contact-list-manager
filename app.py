@@ -29,11 +29,17 @@ def list_contacts():
 def add_contact():
     form = ContactForm()
     if form.validate_on_submit():
+        # Check if phone number already exists
+        existing_contact = Contact.query.filter_by(phone=form.phone.data).first()
+        if existing_contact:
+            flash('Error: A contact with this phone number already exists.', 'error')
+            return render_template('add_contact.html', form=form)
+        
         contact = Contact(
-            name=form.name.data,
-            phone=form.phone.data,
-            email=form.email.data,
-            type=form.type.data
+            name = form.name.data,
+            phone = form.phone.data,
+            email = form.email.data,
+            type = form.type.data
         )
         try:
             db.session.add(contact)
@@ -42,8 +48,9 @@ def add_contact():
             return redirect(url_for('list_contacts'))
         except Exception as e:
             db.session.rollback()
-            flash('Error adding contact. Phone number might be duplicate.', 'error')
+            flash('Error adding contact.', 'error')
     return render_template('add_contact.html', form=form)
+
 
 @app.route('/update/<int:id>', methods=['GET', 'POST'])
 def update_contact(id):
@@ -85,7 +92,12 @@ def create_contact():
     
     if not all(k in data for k in ('name', 'phone', 'type')):
         return jsonify({'error': 'Missing required fields'}), 400
-        
+    
+    # Check if phone number already exists
+    existing_contact = Contact.query.filter_by(phone=data['phone']).first()
+    if existing_contact:
+        return jsonify({'error': 'A contact with this phone number already exists.'}), 400
+    
     contact = Contact(**data)
     try:
         db.session.add(contact)
@@ -94,6 +106,7 @@ def create_contact():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
+
 
 @app.route('/api/contacts/<int:id>', methods=['PUT'])
 def update_contact_api(id):
