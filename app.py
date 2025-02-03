@@ -20,10 +20,26 @@ with app.app_context():
 def index():
     return render_template('index.html')
 
-@app.route('/contacts')
+@app.route('/contacts', methods=['GET'])
 def list_contacts():
-    contacts = Contact.query.all()
-    return render_template('contacts.html', contacts=contacts)
+    search_query = request.args.get('search', '')  # Get the search term from URL query string
+    
+    if search_query:
+        # Filter contacts based on the search term
+        contacts = Contact.query.filter(
+            Contact.name.ilike(f'%{search_query}%') |  # Case-insensitive search for name
+            Contact.phone.ilike(f'%{search_query}%') |  # Case-insensitive search for phone
+            Contact.email.ilike(f'%{search_query}%')   # Case-insensitive search for email
+        ).all()
+    else:
+        # No search query, fetch all contacts
+        contacts = Contact.query.all()
+    
+    return render_template('contacts.html', contacts=contacts, search_query=search_query)
+#@app.route('/contacts')
+#def list_contacts():
+ #   contacts = Contact.query.all()
+  #  return render_template('contacts.html', contacts=contacts)
 
 @app.route('/add', methods=['GET', 'POST'])
 def add_contact():
@@ -54,6 +70,7 @@ def update_contact(id):
         contact.name = form.name.data
         contact.phone = form.phone.data
         contact.email = form.email.data
+        contact.type = form.type.data
         db.session.commit()
         return redirect(url_for('list_contacts'))
     
@@ -63,7 +80,7 @@ def update_contact(id):
 def delete_contact(id):
     contact = Contact.query.get(id)
     # Bug: Not actually deleting the contact but returning success
-    # db.session.delete(contact)
+    db.session.delete(contact)
     db.session.commit()
     return redirect(url_for('list_contacts'))
 
@@ -115,7 +132,7 @@ def delete_contact_api(id):
     contact = Contact.query.get(id)
     if contact:
         # Bug: Same issue in API - not actually deleting
-        # db.session.delete(contact)
+        db.session.delete(contact)
         db.session.commit()
     return '', 204  # Returns success even though nothing was deleted
 
